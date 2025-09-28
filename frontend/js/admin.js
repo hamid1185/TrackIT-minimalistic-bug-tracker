@@ -1,4 +1,4 @@
-
+// Admin panel JavaScript - Simplified
 const adminApi = {
     getProjects: () => api.request("projects.php?action=list"),
     createProject: formData => api.request("projects.php?action=create", { method: "POST", body: formData })
@@ -28,6 +28,7 @@ const adminUI = {
                 </div>
             `).join("");
     },
+    
     displayUsers(users) {
         const c = document.getElementById("users-list");
         if (!c) return;
@@ -48,6 +49,7 @@ const adminUI = {
                 </div>
             `).join("");
     },
+    
     showProjectModal() {
         const m = document.getElementById("project-modal");
         if (m) {
@@ -55,6 +57,7 @@ const adminUI = {
             ["project-name", "project-description"].forEach(id => document.getElementById(id).value = "");
         }
     },
+    
     closeModal() {
         document.querySelectorAll(".modal").forEach(m => m.style.display = "none");
     }
@@ -71,6 +74,7 @@ const admin = {
         await Promise.all([this.loadProjects(), this.loadUsers()]);
         this.setupEventListeners();
     },
+    
     async loadProjects() {
         try {
             const r = await adminApi.getProjects();
@@ -80,6 +84,7 @@ const admin = {
             if (c) c.innerHTML = '<div class="text-center text-red-500">Failed to load projects</div>';
         }
     },
+    
     async loadUsers() {
         try {
             adminUI.displayUsers([
@@ -94,24 +99,31 @@ const admin = {
             if (c) c.innerHTML = '<div class="text-center text-red-500">Failed to load users</div>';
         }
     },
+    
     setupEventListeners() {
         const addBtn = document.getElementById("add-project-btn");
         if (addBtn) addBtn.addEventListener("click", adminUI.showProjectModal);
+        
         const form = document.getElementById("project-form");
         if (form) form.addEventListener("submit", e => this.handleProjectSubmission(e));
+        
         document.querySelectorAll(".modal-close").forEach(btn => btn.addEventListener("click", adminUI.closeModal));
         document.addEventListener("click", e => e.target.classList.contains("modal") && adminUI.closeModal());
     },
+    
     async handleProjectSubmission(e) {
         e.preventDefault();
         const name = document.getElementById("project-name").value.trim();
         const desc = document.getElementById("project-description").value.trim();
+        
         if (!name) return ui.showError("Project name is required");
+        
         try {
             const fd = new FormData();
             fd.append("name", name);
             fd.append("description", desc);
             const r = await adminApi.createProject(fd);
+            
             if (r.success) {
                 ui.showSuccess("Project created successfully!");
                 adminUI.closeModal();
@@ -121,6 +133,7 @@ const admin = {
             ui.showError(err.message || "Failed to create project");
         }
     },
+    
     editProject(id) { ui.showError("Edit project functionality not implemented yet"); },
     editUser(id) { ui.showError("Edit user functionality not implemented yet"); }
 };

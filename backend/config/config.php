@@ -1,68 +1,28 @@
 <?php
-// BugSage Configuration File
+// BugSage Configuration - Simplified and optimized
+if (session_status() == PHP_SESSION_NONE) session_start();
 
-// Start session if not already started
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-}
-
-// Enable error reporting for debugging
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-// Application settings
+// Constants
 define('APP_NAME', 'BugSage');
-define('APP_VERSION', '1.0.0');
 define('BASE_URL', 'http://localhost/bugsagev3/');
-
-// File upload settings
 define('UPLOAD_DIR', '../uploads/');
-define('MAX_FILE_SIZE', 5 * 1024 * 1024); // 5MB
+define('MAX_FILE_SIZE', 5 * 1024 * 1024);
 define('ALLOWED_EXTENSIONS', ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx', 'txt']);
-
-// Pagination settings
 define('BUGS_PER_PAGE', 20);
-
-// Security settings
 define('PASSWORD_MIN_LENGTH', 6);
 
-// Include database configuration
 require_once 'database.php';
 
-// Authentication functions
-function isLoggedIn() {
-    return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
-}
-
-function requireLogin() {
-    if (!isLoggedIn()) {
-        jsonResponse(['error' => 'Authentication required', 'authenticated' => false], 401);
-    }
-}
-
-function getUserRole() {
-    return $_SESSION['user_role'] ?? null;
-}
-
-function isAdmin() {
-    return getUserRole() === 'Admin';
-}
+// Auth functions
+function isLoggedIn() { return !empty($_SESSION['user_id']); }
+function requireLogin() { if (!isLoggedIn()) jsonResponse(['error' => 'Authentication required'], 401); }
+function getUserRole() { return $_SESSION['user_role'] ?? null; }
+function isAdmin() { return getUserRole() === 'Admin'; }
 
 // Utility functions
-function sanitizeInput($data) {
-    if ($data === null || $data === '') {
-        return '';
-    }
-    return htmlspecialchars(strip_tags(trim($data)), ENT_QUOTES, 'UTF-8');
-}
-
-function isValidEmail($email) {
-    return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
-}
-
-function formatDate($date) {
-    return date('M j, Y g:i A', strtotime($date));
-}
+function sanitizeInput($data) { return $data ? htmlspecialchars(strip_tags(trim($data)), ENT_QUOTES, 'UTF-8') : ''; }
+function isValidEmail($email) { return filter_var($email, FILTER_VALIDATE_EMAIL) !== false; }
+function formatDate($date) { return date('M j, Y g:i A', strtotime($date)); }
 
 // Response helper
 function jsonResponse($data, $status = 200) {
@@ -75,14 +35,10 @@ function jsonResponse($data, $status = 200) {
 
 // Debug function
 function debugLog($message, $data = null) {
-    if ($data !== null) {
-        error_log("BugSage Debug - $message: " . print_r($data, true));
-    } else {
-        error_log("BugSage Debug - $message");
-    }
+    error_log("BugSage - $message" . ($data ? ': ' . print_r($data, true) : ''));
 }
 
-// CORS headers helper
+// CORS helper
 function setCorsHeaders() {
     header('Access-Control-Allow-Origin: *');
     header('Access-Control-Allow-Methods: POST, GET, PUT, DELETE, OPTIONS');
@@ -90,7 +46,6 @@ function setCorsHeaders() {
     header('Access-Control-Allow-Credentials: true');
 }
 
-// Handle preflight OPTIONS request
 function handlePreflight() {
     if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
         http_response_code(200);

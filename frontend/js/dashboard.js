@@ -1,5 +1,4 @@
-// Dashboard JavaScript (Minimized)
-
+// Dashboard JavaScript - Simplified
 const dashboardApi = {
     getStats: () => api.request('dashboard.php?action=stats'),
     getRecentBugs: () => api.request('dashboard.php?action=recent'),
@@ -28,10 +27,13 @@ const dashboardUI = {
     displayStatusOverview(statusCounts = []) {
         const container = document.getElementById('status-overview');
         if (!container) return;
+        
         const statuses = ['New', 'In Progress', 'Resolved', 'Closed'];
         const colors = ['new', 'progress', 'resolved', 'closed'];
         const map = Object.fromEntries(statuses.map((s, i) => [s, { color: colors[i], count: 0 }]));
+        
         statusCounts.forEach(s => map[s.status] && (map[s.status].count = +s.count || 0));
+        
         container.innerHTML = statuses.map(s => `
             <div class="status-item">
                 <div class="status-item-label">
@@ -46,10 +48,12 @@ const dashboardUI = {
     displayRecentBugs(bugsList = []) {
         const tbody = document.querySelector('#recent-bugs-table tbody');
         if (!tbody) return;
+        
         if (!bugsList.length) {
             tbody.innerHTML = '<tr><td colspan="4" class="text-center text-gray-500">No recent bugs</td></tr>';
             return;
         }
+        
         tbody.innerHTML = bugsList.slice(0, 10).map(bug => `
             <tr>
                 <td>
@@ -67,6 +71,7 @@ const dashboardUI = {
     displayMyBugs(bugsList = []) {
         const container = document.getElementById('my-bugs-list');
         if (!container) return;
+        
         if (!bugsList.length) {
             container.innerHTML = `
                 <div class="text-center py-8 text-gray-500">
@@ -76,6 +81,7 @@ const dashboardUI = {
             `;
             return;
         }
+        
         container.innerHTML = bugsList.slice(0, 5).map(bug => `
             <div class="bug-item">
                 <div class="bug-item-header">
@@ -101,6 +107,7 @@ const dashboard = {
             ui.showError('Failed to load dashboard data');
         }
     },
+    
     async loadStats() {
         try {
             dashboardUI.displayStats(await dashboardApi.getStats());
@@ -109,6 +116,7 @@ const dashboard = {
             dashboardUI.displayStats();
         }
     },
+    
     async loadRecentBugs() {
         try {
             const r = await dashboardApi.getRecentBugs();
@@ -118,6 +126,7 @@ const dashboard = {
             if (tbody) tbody.innerHTML = '<tr><td colspan="4" class="text-center text-red-500">Failed to load recent bugs</td></tr>';
         }
     },
+    
     async loadMyBugs() {
         try {
             const r = await dashboardApi.getMyBugs();

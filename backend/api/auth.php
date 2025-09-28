@@ -5,11 +5,7 @@ setCorsHeaders();
 handlePreflight();
 
 $action = $_GET['action'] ?? '';
-debugLog("Auth API called", [
-    'method' => $_SERVER['REQUEST_METHOD'],
-    'action' => $action,
-    'session_id' => session_id()
-]);
+debugLog("Auth API", ['method' => $_SERVER['REQUEST_METHOD'], 'action' => $action]);
 
 try {
     switch($action) {
@@ -20,28 +16,24 @@ try {
         default: jsonResponse(['error' => 'Invalid action'], 400);
     }
 } catch (Exception $e) {
-    debugLog("Auth API Exception", ['message' => $e->getMessage()]);
-    jsonResponse(['error' => 'Internal server error: ' . $e->getMessage()], 500);
+    debugLog("Auth Exception", ['message' => $e->getMessage()]);
+    jsonResponse(['error' => 'Internal server error'], 500);
 }
 
 function handleLogin() {
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') 
-        jsonResponse(['error' => 'Method not allowed'], 405);
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') jsonResponse(['error' => 'Method not allowed'], 405);
+    
     $email = sanitizeInput($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
     
-    if (!$email || !$password) 
-        jsonResponse(['error' => 'Email and password are required'], 400);
-
-    if (!isValidEmail($email)) 
-        jsonResponse(['error' => 'Invalid email format'], 400);
+    if (!$email || !$password) jsonResponse(['error' => 'Email and password required'], 400);
+    if (!isValidEmail($email)) jsonResponse(['error' => 'Invalid email format'], 400);
 
     global $pdo;
     $stmt = $pdo->prepare("SELECT user_id, name, email, password_hash, role FROM users WHERE email = ?");
-
     $stmt->execute([$email]);
-
     $user = $stmt->fetch();
+    
     if ($user && password_verify($password, $user['password_hash'])) {
         session_regenerate_id(true);
         $_SESSION = [
@@ -51,7 +43,6 @@ function handleLogin() {
             'user_role' => $user['role'],
             'login_time' => time()
         ];
-        debugLog("Login successful", ['user_id' => $user['user_id']]);
         jsonResponse([
             'success' => true,
             'authenticated' => true,
@@ -63,62 +54,49 @@ function handleLogin() {
             ]
         ]);
     } else {
-        jsonResponse(['error' => 'Invalid email or password'], 401);
+        jsonResponse(['error' => 'Invalid credentials'], 401);
     }
 }
 
 function handleRegister() {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') jsonResponse(['error' => 'Method not allowed'], 405);
+    
     $name = sanitizeInput($_POST['name'] ?? '');
     $email = sanitizeInput($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
     $role = sanitizeInput($_POST['role'] ?? 'Developer');
-    if (!$name || !$email || !$password) 
-        jsonResponse(['error' => 'All fields are required'], 400);
+    
+    if (!$name || !$email || !$password) jsonResponse(['error' => 'All fields required'], 400);
+    if (!isValidEmail($email)) jsonResponse(['error' => 'Invalid email'], 400);
+    if (strlen($password) < PASSWORD_MIN_LENGTH) jsonResponse(['error' => 'Password too short'], 400);
+    if (!in_array($role, ['Developer', 'Tester', 'Admin'])) jsonResponse(['error' => 'Invalid role'], 400);
 
-    if (!isValidEmail($email)) 
-        jsonResponse(['error' => 'Invalid email format'], 400);
-
-    if (strlen($password) < PASSWORD_MIN_LENGTH) 
-        jsonResponse(['error' => 'Password must be at least ' . PASSWORD_MIN_LENGTH . ' characters'], 400);
-    if (!in_array($role, ['Developer', 'Tester', 'Admin'])) 
-        jsonResponse(['error' => 'Invalid role selected'], 400);
     global $pdo;
     $stmt = $pdo->prepare("SELECT user_id FROM users WHERE email = ?");
     $stmt->execute([$email]);
-    if ($stmt->fetch()) 
-        jsonResponse(['error' => 'Email address is already registered'], 400);
-    $password_hash = password_hash($password, PASSWORD_DEFAULT);
+    if ($stmt->fetch()) jsonResponse(['error' => 'Email already exists'], 400);
+    
     $stmt = $pdo->prepare("INSERT INTO users (name, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, NOW())");
-    if ($stmt->execute([$name, $email, $password_hash, $role])) {
-        $userId = $pdo->lastInsertId();
-        debugLog("Registration successful", ['user_id' => $userId]);
-        jsonResponse([
-            'success' => true, 
-            'message' => 'Registration successful. You can now login.',
-            'user_id' => $userId
-        ]);
+    if ($stmt->execute([$name, $email, password_hash($password, PASSWORD_DEFAULT), $role])) {
+        jsonResponse(['success' => true, 'message' => 'Registration successful']);
     } else {
-        jsonResponse(['error' => 'Registration failed. Please try again.'], 500);
+        jsonResponse(['error' => 'Registration failed'], 500);
     }
 }
 
 function handleLogout() {
-    debugLog("Logout called", ['session_id' => session_id()]);
     $_SESSION = [];
     if (ini_get("session.use_cookies")) {
         $params = session_get_cookie_params();
         setcookie(session_name(), '', time() - 42000, $params["path"], $params["domain"], $params["secure"], $params["httponly"]);
     }
     session_destroy();
-    jsonResponse(['success' => true, 'message' => 'Logged out successfully', 'authenticated' => false]);
+    jsonResponse(['success' => true, 'authenticated' => false]);
 }
 
 function checkAuth() {
-    debugLog("Auth check", ['session_data' => $_SESSION]);
     if (isLoggedIn()) {
-        $maxAge = 86400;
-        if (isset($_SESSION['login_time']) && (time() - $_SESSION['login_time']) > $maxAge) {
+        if (isset($_SESSION['login_time']) && (time() - $_SESSION['login_time']) > 86400) {
             session_destroy();
             jsonResponse(['authenticated' => false, 'message' => 'Session expired']);
         }
